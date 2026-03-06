@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Retro Gaffer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="crt">
+    <header class="topbar panel">
+      <h1>⚽ RETRO GAFFER</h1>
+      <div class="subtitle">Premier Manager vibes. Modern football universe.</div>
+    </header>
+
+    <section id="clubSelect" class="panel"></section>
+
+    <main id="gameLayout" class="hidden">
+      <section class="panel hud">
+        <div>
+          <strong id="clubName"></strong>
+          <div id="leagueName"></div>
+        </div>
+        <div>
+          <div>Season <span id="seasonNo"></span></div>
+          <div>Week <span id="weekNo"></span></div>
+        </div>
+        <div>
+          <div>Budget: £<span id="budget"></span>m</div>
+          <div>Wages/w: £<span id="wages"></span>m</div>
+        </div>
+        <div>
+          <div>Fans: <span id="fans"></span>%</div>
+          <div>Board: <span id="board"></span>%</div>
+        </div>
+      </section>
+
+      <section class="tabs panel">
+        <button data-tab="dashboard" class="active">Dashboard</button>
+        <button data-tab="tactics">Tactics</button>
+        <button data-tab="transfers">Transfers</button>
+        <button data-tab="finances">Finances</button>
+        <button data-tab="stadium">Stadium</button>
+        <button data-tab="league">League</button>
+      </section>
+
+      <section id="dashboard" class="panel tabContent"></section>
+      <section id="tactics" class="panel tabContent hidden"></section>
+      <section id="transfers" class="panel tabContent hidden"></section>
+      <section id="finances" class="panel tabContent hidden"></section>
+      <section id="stadium" class="panel tabContent hidden"></section>
+      <section id="league" class="panel tabContent hidden"></section>
+    </main>
+  </div>
+
+  <dialog id="matchDialog">
+    <div class="panel">
+      <h2 id="matchTitle"></h2>
+      <div class="scoreline"><span id="homeScore">0</span> - <span id="awayScore">0</span></div>
+      <canvas id="pitch" width="640" height="360"></canvas>
+      <div class="controls">
+        <button id="mentalityBtn">Toggle Mentality</button>
+        <button data-speed="1">1x</button>
+        <button data-speed="2">2x</button>
+        <button data-speed="4">4x</button>
+        <button data-speed="8">8x</button>
+        <button id="instantBtn">Instant Result</button>
+      </div>
+      <div class="liveInfo">
+        <span>Minute: <strong id="minute">0</strong></span>
+        <span>Style: <strong id="liveStyle">Balanced</strong></span>
+      </div>
+      <pre id="commentary"></pre>
+      <button id="closeMatch" class="hidden">Continue</button>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
