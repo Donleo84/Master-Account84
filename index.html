@@ -1,80 +1,243 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Retro Gaffer</title>
+  <title>RETRO GAFFER — Football Management Revival</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app" class="crt">
-    <header class="topbar panel">
-      <h1>⚽ RETRO GAFFER</h1>
-      <div class="subtitle">Premier Manager vibes. Modern football universe.</div>
-    </header>
 
-    <section id="clubSelect" class="panel"></section>
-
-    <main id="gameLayout" class="hidden">
-      <section class="panel hud">
-        <div>
-          <strong id="clubName"></strong>
-          <div id="leagueName"></div>
-        </div>
-        <div>
-          <div>Season <span id="seasonNo"></span></div>
-          <div>Week <span id="weekNo"></span></div>
-        </div>
-        <div>
-          <div>Budget: £<span id="budget"></span>m</div>
-          <div>Wages/w: £<span id="wages"></span>m</div>
-        </div>
-        <div>
-          <div>Fans: <span id="fans"></span>%</div>
-          <div>Board: <span id="board"></span>%</div>
-        </div>
-      </section>
-
-      <section class="tabs panel">
-        <button data-tab="dashboard" class="active">Dashboard</button>
-        <button data-tab="tactics">Tactics</button>
-        <button data-tab="transfers">Transfers</button>
-        <button data-tab="finances">Finances</button>
-        <button data-tab="stadium">Stadium</button>
-        <button data-tab="league">League</button>
-      </section>
-
-      <section id="dashboard" class="panel tabContent"></section>
-      <section id="tactics" class="panel tabContent hidden"></section>
-      <section id="transfers" class="panel tabContent hidden"></section>
-      <section id="finances" class="panel tabContent hidden"></section>
-      <section id="stadium" class="panel tabContent hidden"></section>
-      <section id="league" class="panel tabContent hidden"></section>
-    </main>
+<!-- ============================================================
+     SPLASH SCREEN
+     ============================================================ -->
+<div id="splashScreen" class="screen">
+  <div class="splash-logo">
+    <div class="splash-title">&#x26BD; RETRO GAFFER</div>
+    <div class="splash-sub">Football Management Revival</div>
+    <div class="splash-tagline">Premier Manager Soul &middot; Modern Craft &middot; Serious Depth</div>
   </div>
+  <div class="splash-btns">
+    <button class="btn-primary" onclick="RG.startNewGame()">NEW CAREER</button>
+    <button onclick="RG.loadSave(1)">LOAD SLOT 1</button>
+    <button onclick="RG.loadSave(2)">LOAD SLOT 2</button>
+    <button onclick="RG.loadSave(3)">LOAD SLOT 3</button>
+  </div>
+  <div class="splash-credits">v1.0 &middot; A Retro Indie Studio Production &middot; All club/player data is fictional inspiration only</div>
+</div>
 
-  <dialog id="matchDialog">
-    <div class="panel">
-      <h2 id="matchTitle"></h2>
-      <div class="scoreline"><span id="homeScore">0</span> - <span id="awayScore">0</span></div>
-      <canvas id="pitch" width="640" height="360"></canvas>
-      <div class="controls">
-        <button id="mentalityBtn">Toggle Mentality</button>
-        <button data-speed="1">1x</button>
-        <button data-speed="2">2x</button>
-        <button data-speed="4">4x</button>
-        <button data-speed="8">8x</button>
-        <button id="instantBtn">Instant Result</button>
-      </div>
-      <div class="liveInfo">
-        <span>Minute: <strong id="minute">0</strong></span>
-        <span>Style: <strong id="liveStyle">Balanced</strong></span>
-      </div>
-      <pre id="commentary"></pre>
-      <button id="closeMatch" class="hidden">Continue</button>
+<!-- ============================================================
+     SETUP SCREEN
+     ============================================================ -->
+<div id="setupScreen" class="screen hidden">
+  <div style="max-width:1100px;margin:0 auto;padding:16px;">
+    <div class="setup-header">
+      <h1>NEW CAREER</h1>
+      <p class="text-dim text-sm">Choose your club. Shape your legacy.</p>
     </div>
-  </dialog>
+    <div class="setup-grid">
+      <div class="setup-left">
+        <div class="panel">
+          <h3>Manager Profile</h3>
+          <label>Your Name</label>
+          <input type="text" id="managerNameInput" placeholder="Enter your name..." maxlength="25" style="margin-bottom:10px;" />
+          <label>Difficulty</label>
+          <select id="difficultySelect">
+            <option value="easy">Easy &mdash; Generous budgets &amp; patient boards</option>
+            <option value="standard" selected>Standard &mdash; Realistic football management</option>
+            <option value="hard">Hard &mdash; Unforgiving. Every decision counts.</option>
+          </select>
+        </div>
+        <div class="panel">
+          <h3>Filter by League</h3>
+          <div class="league-tabs" id="leagueFilterTabs"></div>
+        </div>
+        <div class="panel club-preview-box" id="clubPreviewPanel">
+          <h3>Club Preview</h3>
+          <p class="text-dim text-sm" id="clubPreviewEmpty">Select a club to see details.</p>
+          <div id="clubPreviewContent" class="hidden"></div>
+        </div>
+        <button class="btn-primary full-width hidden" id="startCareerBtn" onclick="RG.confirmStartCareer()" style="margin-top:4px; padding:12px;">
+          &#x25B6; START CAREER
+        </button>
+      </div>
+      <div class="setup-right">
+        <div class="panel" style="height:100%;">
+          <h3>Choose Your Club</h3>
+          <div class="club-grid" id="clubGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <script src="app.js"></script>
+<!-- ============================================================
+     GAME SCREEN
+     ============================================================ -->
+<div id="gameScreen" class="screen hidden">
+
+  <header id="gameHud">
+    <div class="hud-club">
+      <div class="hud-badge" id="hudBadge"></div>
+      <div>
+        <div class="hud-club-name" id="hudClubName">Club Name</div>
+        <div class="hud-league-name" id="hudLeague">League</div>
+      </div>
+    </div>
+    <div class="hud-stats">
+      <div class="hud-stat">
+        <span class="hud-label">Manager</span>
+        <span class="hud-value" id="hudManager">&mdash;</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">Season</span>
+        <span class="hud-value" id="hudSeason">1</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">Week</span>
+        <span class="hud-value" id="hudWeek">1</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">Budget</span>
+        <span class="hud-value" id="hudBudget">&#xA3;0m</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">Wages/w</span>
+        <span class="hud-value" id="hudWages">&#xA3;0m</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">Board</span>
+        <span class="hud-value" id="hudBoardPct">50%</span>
+        <div class="hud-bar-wrap"><div class="hud-bar board" id="hudBoardBar" style="width:50%"></div></div>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">Fans</span>
+        <span class="hud-value" id="hudFansPct">50%</span>
+        <div class="hud-bar-wrap"><div class="hud-bar fans" id="hudFansBar" style="width:50%"></div></div>
+      </div>
+    </div>
+    <div class="hud-actions">
+      <button class="btn-sm" onclick="RG.saveGame(1)" title="Save to slot 1">SAVE 1</button>
+      <button class="btn-sm" onclick="RG.saveGame(2)" title="Save to slot 2">SAVE 2</button>
+    </div>
+  </header>
+
+  <nav id="mainNav">
+    <button class="nav-btn active" data-tab="dashboard">DASHBOARD</button>
+    <button class="nav-btn" data-tab="squad">SQUAD</button>
+    <button class="nav-btn" data-tab="tactics">TACTICS</button>
+    <button class="nav-btn" data-tab="scouting">SCOUTING</button>
+    <button class="nav-btn" data-tab="transfers">TRANSFERS</button>
+    <button class="nav-btn" data-tab="finances">FINANCES</button>
+    <button class="nav-btn" data-tab="stadium">STADIUM</button>
+    <button class="nav-btn" data-tab="league">LEAGUE</button>
+    <button class="nav-btn" data-tab="fixtures">FIXTURES</button>
+  </nav>
+
+  <main id="mainContent">
+    <div id="tab-dashboard" class="tab-panel"></div>
+    <div id="tab-squad"     class="tab-panel hidden"></div>
+    <div id="tab-tactics"   class="tab-panel hidden"></div>
+    <div id="tab-scouting"  class="tab-panel hidden"></div>
+    <div id="tab-transfers" class="tab-panel hidden"></div>
+    <div id="tab-finances"  class="tab-panel hidden"></div>
+    <div id="tab-stadium"   class="tab-panel hidden"></div>
+    <div id="tab-league"    class="tab-panel hidden"></div>
+    <div id="tab-fixtures"  class="tab-panel hidden"></div>
+  </main>
+
+</div>
+
+<!-- ============================================================
+     MATCH DIALOG
+     ============================================================ -->
+<dialog id="matchDialog">
+  <div>
+    <div class="match-header">
+      <div class="match-team-name match-team-home" id="matchHomeTeam">Home FC</div>
+      <div class="match-scorebox">
+        <div class="match-score-display">
+          <span id="matchHomeScore">0</span>
+          <span style="color:var(--text-dim);font-size:1.4rem;"> - </span>
+          <span id="matchAwayScore">0</span>
+        </div>
+        <div class="match-minute">
+          <span id="matchMinDisplay">0'</span>
+          &nbsp;
+          <span class="match-live-badge" id="matchLiveBadge">LIVE</span>
+        </div>
+      </div>
+      <div class="match-team-name match-team-away" id="matchAwayTeam">Away FC</div>
+    </div>
+
+    <canvas id="matchCanvas" width="720" height="340"></canvas>
+
+    <div class="match-controls">
+      <span class="text-dim text-xs">SPEED:</span>
+      <button class="btn-sm speed-btn active" data-speed="1">1x</button>
+      <button class="btn-sm speed-btn" data-speed="2">2x</button>
+      <button class="btn-sm speed-btn" data-speed="5">5x</button>
+      <button class="btn-sm speed-btn" data-speed="10">10x</button>
+      <button class="btn-sm" id="pauseMatchBtn">&#x23F8; PAUSE</button>
+      <button class="btn-sm btn-warning" id="instantMatchBtn">&#x26A1; INSTANT</button>
+      <button class="btn-sm" id="mentalityMatchBtn">BALANCED</button>
+      <span style="margin-left:auto;" class="text-xs text-dim" id="liveTacticDisplay">4-4-2</span>
+    </div>
+
+    <div class="match-lower">
+      <div class="match-stats-panel" id="matchStatsPanel">
+        <div class="section-label">Match Stats</div>
+        <div class="match-stat-row">
+          <span class="home-val" id="statHomePoss">50</span>
+          <span class="stat-label">POSS%</span>
+          <span class="away-val" id="statAwayPoss">50</span>
+        </div>
+        <div class="match-stat-row">
+          <span class="home-val" id="statHomeShots">0</span>
+          <span class="stat-label">SHOTS</span>
+          <span class="away-val" id="statAwayShots">0</span>
+        </div>
+        <div class="match-stat-row">
+          <span class="home-val" id="statHomeShotsOT">0</span>
+          <span class="stat-label">ON TGT</span>
+          <span class="away-val" id="statAwayShotsOT">0</span>
+        </div>
+        <div class="match-stat-row">
+          <span class="home-val" id="statHomeCorners">0</span>
+          <span class="stat-label">CORNERS</span>
+          <span class="away-val" id="statAwayCorners">0</span>
+        </div>
+        <div class="match-stat-row">
+          <span class="home-val" id="statHomeYellow">0</span>
+          <span class="stat-label">YELLOWS</span>
+          <span class="away-val" id="statAwayYellow">0</span>
+        </div>
+        <div class="section-label" style="margin-top:8px;">Scorers</div>
+        <div id="scorersList" style="font-size:10px;line-height:1.6;"></div>
+      </div>
+      <div class="commentary-feed" id="commentaryFeed"></div>
+    </div>
+
+    <div class="match-footer">
+      <button class="btn-primary hidden" id="matchContinueBtn">
+        &#x2713; FULL TIME &mdash; CONTINUE
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============================================================
+     SEASON REVIEW DIALOG
+     ============================================================ -->
+<dialog id="seasonReviewDialog">
+  <div id="seasonReviewContent" class="season-review"></div>
+</dialog>
+
+<!-- Toast -->
+<div id="toastEl" class="toast hidden"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+
 </body>
 </html>
