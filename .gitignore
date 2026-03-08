@@ -1,0 +1,8 @@
+# Dependencies
+node_modules/
+
+# Build output (too large for git — run npm run build locally)
+dist/
+
+# macOS
+.DS_Store
