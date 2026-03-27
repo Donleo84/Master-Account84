@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>J.A.R.V.I.S. — Stark Industries AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Ambient background particles -->
+  <div id="particles"></div>
+
+  <div id="app">
+    <!-- Header HUD -->
+    <header class="hud-header">
+      <div class="hud-corner top-left">
+        <div class="corner-bracket"></div>
+        <div class="system-info">
+          <span class="label">SYSTEM</span>
+          <span id="statusIndicator" class="status-dot offline"></span>
+          <span id="statusText" class="status-text">INITIALIZING</span>
+        </div>
+      </div>
+
+      <div class="title-block">
+        <div class="arc-reactor">
+          <div class="arc-outer"></div>
+          <div class="arc-inner"></div>
+          <div class="arc-core"></div>
+        </div>
+        <div class="title-text">
+          <h1>J.A.R.V.I.S.</h1>
+          <div class="subtitle">Just A Rather Very Intelligent System</div>
+          <div class="company">STARK INDUSTRIES — AI DIVISION</div>
+        </div>
+      </div>
+
+      <div class="hud-corner top-right">
+        <div class="corner-bracket right"></div>
+        <div class="system-info right">
+          <span id="modelDisplay" class="model-text">claude-sonnet-4-6</span>
+          <span class="label">MODEL</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main interface -->
+    <main class="main-grid">
+      <!-- Left panel: system stats -->
+      <aside class="side-panel left-panel">
+        <div class="panel-title">SYSTEM STATUS</div>
+        <div class="stat-block">
+          <div class="stat-label">NEURAL CORE</div>
+          <div class="stat-bar"><div class="stat-fill" style="width: 94%"></div></div>
+          <div class="stat-val">94%</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">VOICE MODULE</div>
+          <div class="stat-bar"><div id="voiceBar" class="stat-fill" style="width: 0%"></div></div>
+          <div id="voiceVal" class="stat-val">INACTIVE</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">API LINK</div>
+          <div class="stat-bar"><div id="apiBar" class="stat-fill warning" style="width: 20%"></div></div>
+          <div id="apiVal" class="stat-val">CHECKING</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">MEMORY</div>
+          <div class="stat-bar"><div id="memBar" class="stat-fill" style="width: 5%"></div></div>
+          <div id="memVal" class="stat-val">0 msgs</div>
+        </div>
+
+        <div class="panel-divider"></div>
+        <div class="panel-title">CONTROLS</div>
+
+        <div class="control-group">
+          <label class="toggle-label">
+            <span>Voice Output</span>
+            <label class="toggle">
+              <input type="checkbox" id="voiceOutputToggle" checked />
+              <span class="slider"></span>
+            </label>
+          </label>
+          <label class="toggle-label">
+            <span>Auto-Listen</span>
+            <label class="toggle">
+              <input type="checkbox" id="autoListenToggle" />
+              <span class="slider"></span>
+            </label>
+          </label>
+        </div>
+
+        <div class="panel-divider"></div>
+        <div class="panel-title">VOICE SETTINGS</div>
+        <div class="voice-select-block">
+          <label class="field-label">Voice</label>
+          <select id="voiceSelect" class="hud-select"></select>
+          <label class="field-label">Speed</label>
+          <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="0.95" class="hud-range" />
+          <label class="field-label">Pitch</label>
+          <input type="range" id="speechPitch" min="0" max="2" step="0.1" value="0.9" class="hud-range" />
+        </div>
+
+        <div class="panel-divider"></div>
+        <button id="resetBtn" class="hud-btn danger">CLEAR MEMORY</button>
+      </aside>
+
+      <!-- Center: chat area -->
+      <section class="chat-section">
+        <div class="chat-header">
+          <span class="label">COMMUNICATION LOG</span>
+          <div id="typingIndicator" class="typing-indicator hidden">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <div id="chatLog" class="chat-log">
+          <div class="message jarvis">
+            <div class="msg-avatar jarvis-avatar">J</div>
+            <div class="msg-content">
+              <div class="msg-label">JARVIS</div>
+              <div class="msg-text">Good day. J.A.R.V.I.S. is online and fully operational. All systems are nominal. How may I assist you today, Sir?</div>
+              <div class="msg-time" data-time="now"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="input-area">
+          <div class="input-row">
+            <button id="micBtn" class="mic-btn" title="Hold to speak or click to toggle">
+              <div class="mic-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </div>
+              <div class="mic-rings">
+                <div class="ring r1"></div>
+                <div class="ring r2"></div>
+                <div class="ring r3"></div>
+              </div>
+            </button>
+
+            <div class="text-input-wrap">
+              <textarea
+                id="textInput"
+                class="text-input"
+                placeholder="Type a command or click the microphone to speak..."
+                rows="1"
+              ></textarea>
+              <div id="voiceTranscript" class="voice-transcript hidden"></div>
+            </div>
+
+            <button id="sendBtn" class="send-btn" title="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="input-footer">
+            <span id="listenStatus" class="listen-status">Ready</span>
+            <span class="shortcuts">Enter to send &nbsp;|&nbsp; Shift+Enter for newline &nbsp;|&nbsp; Space to activate mic</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right panel -->
+      <aside class="side-panel right-panel">
+        <div class="panel-title">QUICK COMMANDS</div>
+        <div class="quick-commands">
+          <button class="quick-cmd" data-cmd="What's the current time and date?">Time & Date</button>
+          <button class="quick-cmd" data-cmd="Give me a brief status report on your capabilities.">System Report</button>
+          <button class="quick-cmd" data-cmd="I need you to help me write some code. What languages do you know?">Code Help</button>
+          <button class="quick-cmd" data-cmd="Tell me a Jarvis joke, Sir.">Jarvis Humor</button>
+          <button class="quick-cmd" data-cmd="What can you help me with today?">Capabilities</button>
+          <button class="quick-cmd" data-cmd="Analyze the current state of AI technology.">AI Analysis</button>
+        </div>
+
+        <div class="panel-divider"></div>
+        <div class="panel-title">RECENT ACTIVITY</div>
+        <div id="activityLog" class="activity-log">
+          <div class="activity-item">System initialized</div>
+        </div>
+
+        <div class="panel-divider"></div>
+        <div class="panel-title">AUDIO VISUALIZER</div>
+        <div id="audioViz" class="audio-viz">
+          <canvas id="vizCanvas" width="200" height="60"></canvas>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Bottom HUD bar -->
+    <footer class="hud-footer">
+      <div class="footer-left">
+        <span>STARK INDUSTRIES © 2025</span>
+        <span class="sep">|</span>
+        <span id="msgCount">0 QUERIES PROCESSED</span>
+      </div>
+      <div class="footer-center">
+        <div class="pulse-line">
+          <canvas id="pulseCanvas" width="400" height="20"></canvas>
+        </div>
+      </div>
+      <div class="footer-right">
+        <span id="currentTime"></span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
