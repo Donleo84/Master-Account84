@@ -40,6 +40,8 @@ const vizCanvas = document.getElementById('vizCanvas');
 const pulseCanvas = document.getElementById('pulseCanvas');
 const modelDisplay = document.getElementById('modelDisplay');
 
+let elevenLabsEnabled = false;
+
 // ===== Init =====
 async function init() {
   updateTime();
@@ -70,6 +72,10 @@ async function checkStatus() {
       apiBar.style.width = '15%';
       apiVal.textContent = 'NO KEY';
       addMessage('jarvis', 'Warning, Sir: No ANTHROPIC_API_KEY detected. Please add your API key to the .env file and restart the server. I\'m afraid I\'m rather limited without it.');
+    }
+    if (data.elevenLabsConfigured) {
+      elevenLabsEnabled = true;
+      addActivity('ElevenLabs TTS: active (Jarvis Robot voice)');
     }
   } catch {
     setStatus('offline', 'SERVER DOWN');
@@ -130,47 +136,75 @@ function getSelectedVoice() {
   return sorted[parseInt(voiceSelect.value)] || voices[0];
 }
 
-function speak(text) {
-  if (!voiceOutputToggle.checked || !synth) return;
-
-  synth.cancel();
-
-  // Clean text for speech (remove markdown, code blocks)
-  const cleanText = text
+function cleanTextForSpeech(text) {
+  return text
     .replace(/```[\s\S]*?```/g, 'Code block omitted for brevity.')
     .replace(/`[^`]+`/g, (m) => m.slice(1, -1))
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')
     .replace(/#{1,6}\s/g, '')
     .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-    .slice(0, 500); // limit to 500 chars for TTS
+    .slice(0, 500);
+}
 
+function onSpeakEnd() {
+  isSpeaking = false;
+  voiceBar.style.width = '0%';
+  voiceVal.textContent = 'INACTIVE';
+  if (autoListenToggle.checked && !isListening) {
+    setTimeout(startListening, 500);
+  }
+}
+
+async function speakElevenLabs(text) {
+  try {
+    voiceBar.style.width = '80%';
+    voiceVal.textContent = 'SPEAKING';
+    isSpeaking = true;
+
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    if (!res.ok) throw new Error('ElevenLabs TTS failed');
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => { URL.revokeObjectURL(url); onSpeakEnd(); };
+    audio.onerror = () => { URL.revokeObjectURL(url); onSpeakEnd(); };
+    await audio.play();
+  } catch (err) {
+    console.warn('ElevenLabs TTS error, falling back to browser TTS:', err);
+    speakBrowser(cleanTextForSpeech(text));
+  }
+}
+
+function speakBrowser(cleanText) {
+  synth.cancel();
   const utter = new SpeechSynthesisUtterance(cleanText);
   utter.voice = getSelectedVoice();
   utter.rate = parseFloat(speechRate.value);
   utter.pitch = parseFloat(speechPitch.value);
   utter.volume = 1;
-
   isSpeaking = true;
   voiceBar.style.width = '80%';
   voiceVal.textContent = 'SPEAKING';
-
-  utter.onend = () => {
-    isSpeaking = false;
-    voiceBar.style.width = '0%';
-    voiceVal.textContent = 'INACTIVE';
-    if (autoListenToggle.checked && !isListening) {
-      setTimeout(startListening, 500);
-    }
-  };
-
-  utter.onerror = () => {
-    isSpeaking = false;
-    voiceBar.style.width = '0%';
-    voiceVal.textContent = 'INACTIVE';
-  };
-
+  utter.onend = onSpeakEnd;
+  utter.onerror = onSpeakEnd;
   synth.speak(utter);
+}
+
+function speak(text) {
+  if (!voiceOutputToggle.checked) return;
+  const clean = cleanTextForSpeech(text);
+  if (elevenLabsEnabled) {
+    speakElevenLabs(clean);
+  } else {
+    speakBrowser(clean);
+  }
 }
 
 // ===== Voice Recognition =====
