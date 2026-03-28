@@ -2,6 +2,51 @@ require('dotenv').config();
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const path = require('path');
+const { spawn } = require('child_process');
+const os = require('os');
+
+// ===== Piper TTS (local, free, JARVIS model) =====
+const PIPER_MODEL = process.env.PIPER_MODEL_PATH ||
+  path.join(os.homedir(), 'piper-models', 'jarvis-high.onnx');
+
+function rawPcmToWav(pcmBuffer, sampleRate = 22050) {
+  const dataSize = pcmBuffer.length;
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + dataSize, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(sampleRate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(dataSize, 40);
+  return Buffer.concat([header, pcmBuffer]);
+}
+
+function piperTTS(text) {
+  return new Promise((resolve, reject) => {
+    const piper = spawn('python3', ['-m', 'piper', '-m', PIPER_MODEL, '--output-raw']);
+    const chunks = [];
+    piper.stdout.on('data', (c) => chunks.push(c));
+    piper.on('error', reject);
+    piper.on('close', (code) => {
+      if (code !== 0 && chunks.length === 0) return reject(new Error(`piper exited ${code}`));
+      resolve(rawPcmToWav(Buffer.concat(chunks)));
+    });
+    piper.stdin.write(text.slice(0, 500));
+    piper.stdin.end();
+  });
+}
+
+function isPiperAvailable() {
+  const fs = require('fs');
+  return fs.existsSync(PIPER_MODEL);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -129,12 +174,23 @@ app.post('/api/reset', (req, res) => {
   res.json({ message: 'Conversation history cleared, Sir.' });
 });
 
-// TTS proxy — Fish Audio (primary, JARVIS MCU voice) with ElevenLabs fallback
+// TTS proxy — Piper (primary, free local JARVIS model) → Fish Audio → ElevenLabs
 app.post('/api/tts', async (req, res) => {
   const { text } = req.body;
   if (!text) return res.status(400).json({ error: 'Text required' });
 
-  // Try Fish Audio first (actual JARVIS MCU voice)
+  // Try Piper first (free, local JARVIS model trained on Marvel audio)
+  if (isPiperAvailable()) {
+    try {
+      const wav = await piperTTS(text);
+      res.setHeader('Content-Type', 'audio/wav');
+      return res.send(wav);
+    } catch (err) {
+      console.warn('Piper TTS error:', err.message);
+    }
+  }
+
+  // Try Fish Audio (actual JARVIS MCU voice)
   if (process.env.FISH_AUDIO_API_KEY) {
     try {
       const response = await fetch('https://api.fish.audio/v1/tts', {
@@ -202,7 +258,8 @@ app.post('/api/tts', async (req, res) => {
 
 // Health check
 app.get('/api/status', (req, res) => {
-  const ttsProvider = process.env.FISH_AUDIO_API_KEY ? 'fish-audio'
+  const ttsProvider = isPiperAvailable() ? 'piper'
+    : process.env.FISH_AUDIO_API_KEY ? 'fish-audio'
     : process.env.ELEVENLABS_API_KEY ? 'elevenlabs'
     : 'browser';
   res.json({
