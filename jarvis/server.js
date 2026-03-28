@@ -160,7 +160,8 @@ app.post('/api/tts', async (req, res) => {
         const buffer = await response.arrayBuffer();
         return res.send(Buffer.from(buffer));
       }
-      console.warn('Fish Audio failed, trying ElevenLabs fallback...');
+      const errText = await response.text();
+      console.warn(`Fish Audio failed [${response.status}]:`, errText);
     } catch (err) {
       console.warn('Fish Audio error:', err.message);
     }
