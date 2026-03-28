@@ -129,57 +129,88 @@ app.post('/api/reset', (req, res) => {
   res.json({ message: 'Conversation history cleared, Sir.' });
 });
 
-// ElevenLabs TTS proxy (optional — uses dedicated Jarvis Robot voice)
-// Voice ID: WWtyH2oxeOp9yZwK8ERD (Jarvis – Robot by ElevenLabs)
+// TTS proxy — Fish Audio (primary, JARVIS MCU voice) with ElevenLabs fallback
 app.post('/api/tts', async (req, res) => {
   const { text } = req.body;
   if (!text) return res.status(400).json({ error: 'Text required' });
 
-  if (!process.env.ELEVENLABS_API_KEY) {
-    return res.status(404).json({ error: 'ElevenLabs not configured' });
-  }
-
-  const JARVIS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'WWtyH2oxeOp9yZwK8ERD';
-
-  try {
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${JARVIS_VOICE_ID}`,
-      {
+  // Try Fish Audio first (actual JARVIS MCU voice)
+  if (process.env.FISH_AUDIO_API_KEY) {
+    try {
+      const response = await fetch('https://api.fish.audio/v1/tts', {
         method: 'POST',
         headers: {
-          'xi-api-key': process.env.ELEVENLABS_API_KEY,
+          'Authorization': `Bearer ${process.env.FISH_AUDIO_API_KEY}`,
           'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg'
+          'model': 's2-pro'
         },
         body: JSON.stringify({
           text: text.slice(0, 500),
-          model_id: 'eleven_flash_v2_5',
-          voice_settings: { stability: 0.75, similarity_boost: 0.85, style: 0.2 }
+          reference_id: process.env.FISH_AUDIO_VOICE_ID || '612b878b113047d9a770c069c8b4fdfe',
+          format: 'mp3',
+          mp3_bitrate: 128,
+          temperature: 0.7,
+          top_p: 0.7,
+          latency: 'normal'
         })
+      });
+
+      if (response.ok) {
+        res.setHeader('Content-Type', 'audio/mpeg');
+        const buffer = await response.arrayBuffer();
+        return res.send(Buffer.from(buffer));
       }
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      return res.status(response.status).json({ error: err });
+      console.warn('Fish Audio failed, trying ElevenLabs fallback...');
+    } catch (err) {
+      console.warn('Fish Audio error:', err.message);
     }
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Transfer-Encoding', 'chunked');
-    const buffer = await response.arrayBuffer();
-    res.send(Buffer.from(buffer));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
+
+  // Fallback: ElevenLabs (Daniel — British authoritative voice)
+  if (process.env.ELEVENLABS_API_KEY) {
+    try {
+      const voiceId = process.env.ELEVENLABS_VOICE_ID || 'onwK4e9ZLuTAKqWW03F9';
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        {
+          method: 'POST',
+          headers: {
+            'xi-api-key': process.env.ELEVENLABS_API_KEY,
+            'Content-Type': 'application/json',
+            'Accept': 'audio/mpeg'
+          },
+          body: JSON.stringify({
+            text: text.slice(0, 500),
+            model_id: 'eleven_flash_v2_5',
+            voice_settings: { stability: 0.75, similarity_boost: 0.85, style: 0.2 }
+          })
+        }
+      );
+      if (response.ok) {
+        res.setHeader('Content-Type', 'audio/mpeg');
+        const buffer = await response.arrayBuffer();
+        return res.send(Buffer.from(buffer));
+      }
+    } catch (err) {
+      console.warn('ElevenLabs error:', err.message);
+    }
+  }
+
+  res.status(404).json({ error: 'No TTS provider configured' });
 });
 
 // Health check
 app.get('/api/status', (req, res) => {
+  const ttsProvider = process.env.FISH_AUDIO_API_KEY ? 'fish-audio'
+    : process.env.ELEVENLABS_API_KEY ? 'elevenlabs'
+    : 'browser';
   res.json({
     status: 'online',
     model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
     apiConfigured: !!process.env.ANTHROPIC_API_KEY,
-    elevenLabsConfigured: !!process.env.ELEVENLABS_API_KEY
+    elevenLabsConfigured: !!process.env.ELEVENLABS_API_KEY,
+    fishAudioConfigured: !!process.env.FISH_AUDIO_API_KEY,
+    ttsProvider
   });
 });
 

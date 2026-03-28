@@ -73,9 +73,12 @@ async function checkStatus() {
       apiVal.textContent = 'NO KEY';
       addMessage('jarvis', 'Warning, Sir: No ANTHROPIC_API_KEY detected. Please add your API key to the .env file and restart the server. I\'m afraid I\'m rather limited without it.');
     }
-    if (data.elevenLabsConfigured) {
+    if (data.ttsProvider === 'fish-audio') {
+      elevenLabsEnabled = true; // reuse flag — means "use server TTS"
+      addActivity('Fish Audio TTS: active (JARVIS MCU voice)');
+    } else if (data.ttsProvider === 'elevenlabs') {
       elevenLabsEnabled = true;
-      addActivity('ElevenLabs TTS: active (Jarvis Robot voice)');
+      addActivity('ElevenLabs TTS: active (Daniel British voice)');
     }
   } catch {
     setStatus('offline', 'SERVER DOWN');
