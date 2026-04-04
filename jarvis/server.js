@@ -45,6 +45,8 @@ function piperTTS(text) {
 
 function isPiperAvailable() {
   const fs = require('fs');
+  // Piper only supported on Linux/Mac (not Windows)
+  if (process.platform === 'win32') return false;
   return fs.existsSync(PIPER_MODEL);
 }
 
