@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0a0a1a" />
+  <title>BINGO!</title>
+  <link rel="stylesheet" href="bingo.css" />
+</head>
+<body>
+  <div id="root">
+
+    <!-- Screen: Start -->
+    <div id="screen-start" class="screen active">
+      <div class="start-wrap">
+        <div class="logo-ring">
+          <div class="logo-text">B<span>I</span>N<span>G</span>O</div>
+        </div>
+        <p class="tagline">Classic Bingo — right on your iPhone</p>
+        <div class="mode-row">
+          <button class="mode-btn active" data-mode="auto" id="modeAuto">Auto Call</button>
+          <button class="mode-btn" data-mode="manual" id="modeManual">Manual</button>
+        </div>
+        <div id="speedRow" class="speed-row">
+          <label>Call Speed</label>
+          <div class="speed-btns">
+            <button class="speed-btn active" data-sec="5">Slow</button>
+            <button class="speed-btn" data-sec="3">Med</button>
+            <button class="speed-btn" data-sec="1.5">Fast</button>
+          </div>
+        </div>
+        <div class="card-count-row">
+          <label>Cards</label>
+          <div class="count-btns">
+            <button class="count-btn active" data-cards="1">1</button>
+            <button class="count-btn" data-cards="2">2</button>
+            <button class="count-btn" data-cards="4">4</button>
+          </div>
+        </div>
+        <button class="btn-primary" id="startBtn">Let's Play!</button>
+      </div>
+    </div>
+
+    <!-- Screen: Game -->
+    <div id="screen-game" class="screen">
+
+      <!-- Caller Section -->
+      <div id="callerBar">
+        <div id="calledBall" class="ball ball-idle">
+          <span id="ballLetter">?</span>
+          <span id="ballNumber">--</span>
+        </div>
+        <div id="callerControls">
+          <button id="prevBtn" class="ctrl-btn" title="Previous">&#9664;</button>
+          <button id="callBtn" class="ctrl-btn call-btn" title="Call Next">&#9654;</button>
+          <button id="pauseBtn" class="ctrl-btn" title="Pause" style="display:none">&#9646;&#9646;</button>
+          <button id="newGameBtn" class="ctrl-btn new-btn" title="New Game">&#8635;</button>
+        </div>
+        <div id="callCount">0 / 75 called</div>
+      </div>
+
+      <!-- Called Numbers Board -->
+      <div id="boardWrap">
+        <div id="board">
+          <div class="board-col" id="col-B"><div class="board-hdr b-col">B</div><div class="board-nums" id="b-nums"></div></div>
+          <div class="board-col" id="col-I"><div class="board-hdr i-col">I</div><div class="board-nums" id="i-nums"></div></div>
+          <div class="board-col" id="col-N"><div class="board-hdr n-col">N</div><div class="board-nums" id="n-nums"></div></div>
+          <div class="board-col" id="col-G"><div class="board-hdr g-col">G</div><div class="board-nums" id="g-nums"></div></div>
+          <div class="board-col" id="col-O"><div class="board-hdr o-col">O</div><div class="board-nums" id="o-nums"></div></div>
+        </div>
+      </div>
+
+      <!-- Bingo Cards -->
+      <div id="cardsArea"></div>
+
+      <!-- Win Banner -->
+      <div id="winBanner" class="hidden">
+        <div class="win-inner">
+          <div class="win-title">BINGO!!!</div>
+          <div class="win-sub" id="winSub"></div>
+          <button class="btn-primary" id="winNewBtn">Play Again</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="bingo.js"></script>
+</body>
+</html>
