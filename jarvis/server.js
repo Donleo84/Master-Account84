@@ -223,24 +223,27 @@ app.post('/api/tts', async (req, res) => {
       return res.send(cached);
     }
     try {
-      const response = await fetch('https://api.fish.audio/v1/tts', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.FISH_AUDIO_API_KEY}`,
-          'Content-Type': 'application/json',
-          'model': 's2-pro'
-        },
-        body: JSON.stringify({
-          text: cleanText,
-          reference_id: process.env.FISH_AUDIO_VOICE_ID || '612b878b113047d9a770c069c8b4fdfe',
-          format: 'mp3',
-          mp3_bitrate: 128,
-          temperature: 0.7,
-          top_p: 0.7,
-          latency: 'normal',
-          prosody: { speed: 0.95 }
-        })
-      });
+      // Try s2-pro first, fall back to s1 (free tier compatible)
+      let response;
+      for (const model of ['s2-pro', 's1']) {
+        response = await fetch('https://api.fish.audio/v1/tts', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.FISH_AUDIO_API_KEY}`,
+            'Content-Type': 'application/json',
+            'model': model
+          },
+          body: JSON.stringify({
+            text: cleanText,
+            reference_id: process.env.FISH_AUDIO_VOICE_ID || '612b878b113047d9a770c069c8b4fdfe',
+            format: 'mp3',
+            mp3_bitrate: 128,
+            latency: 'normal'
+          })
+        });
+        if (response.ok || response.status !== 402) break;
+        console.warn(`Fish Audio ${model} returned 402, trying next model...`);
+      }
 
       if (response.ok) {
         const buffer = Buffer.from(await response.arrayBuffer());
