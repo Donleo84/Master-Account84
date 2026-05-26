@@ -27,6 +27,7 @@ function saveCache(text, provider, buffer) {
 }
 
 // ===== Piper TTS (local, free, JARVIS model) =====
+const PIPER_EXE_WIN = path.join(__dirname, 'piper', 'piper.exe');
 const PIPER_MODEL = process.env.PIPER_MODEL_PATH ||
   path.join(os.homedir(), 'piper-models', 'jarvis-high.onnx');
 
@@ -51,24 +52,41 @@ function rawPcmToWav(pcmBuffer, sampleRate = 22050) {
 
 function piperTTS(text) {
   return new Promise((resolve, reject) => {
-    const piper = spawn('python3', ['-m', 'piper', '-m', PIPER_MODEL, '--output-raw']);
-    const chunks = [];
-    piper.stdout.on('data', (c) => chunks.push(c));
-    piper.on('error', reject);
-    piper.on('close', (code) => {
-      if (code !== 0 && chunks.length === 0) return reject(new Error(`piper exited ${code}`));
-      resolve(rawPcmToWav(Buffer.concat(chunks)));
-    });
-    piper.stdin.write(text.slice(0, 500));
-    piper.stdin.end();
+    if (process.platform === 'win32') {
+      // Windows: write to temp WAV file (avoids binary stdout corruption)
+      const tmpFile = path.join(os.tmpdir(), `jarvis-${Date.now()}.wav`);
+      const piper = spawn(PIPER_EXE_WIN, ['--model', PIPER_MODEL, '--output_file', tmpFile]);
+      let stderr = '';
+      piper.stderr.on('data', d => { stderr += d; });
+      piper.on('error', reject);
+      piper.on('close', () => {
+        if (!fs.existsSync(tmpFile)) return reject(new Error(`piper.exe failed: ${stderr}`));
+        const wav = fs.readFileSync(tmpFile);
+        try { fs.unlinkSync(tmpFile); } catch {}
+        resolve(wav);
+      });
+      piper.stdin.write(text.slice(0, 500));
+      piper.stdin.end();
+    } else {
+      // Linux/Mac: pipe raw PCM stdout → convert to WAV
+      const piper = spawn('python3', ['-m', 'piper', '-m', PIPER_MODEL, '--output-raw']);
+      const chunks = [];
+      piper.stdout.on('data', (c) => chunks.push(c));
+      piper.on('error', reject);
+      piper.on('close', (code) => {
+        if (code !== 0 && chunks.length === 0) return reject(new Error(`piper exited ${code}`));
+        resolve(rawPcmToWav(Buffer.concat(chunks)));
+      });
+      piper.stdin.write(text.slice(0, 500));
+      piper.stdin.end();
+    }
   });
 }
 
 function isPiperAvailable() {
-  const fs = require('fs');
-  // Piper only supported on Linux/Mac (not Windows)
-  if (process.platform === 'win32') return false;
-  return fs.existsSync(PIPER_MODEL);
+  if (!fs.existsSync(PIPER_MODEL)) return false;
+  if (process.platform === 'win32') return fs.existsSync(PIPER_EXE_WIN);
+  return true;
 }
 
 const app = express();
