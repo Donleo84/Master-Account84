@@ -263,8 +263,10 @@ app.post('/api/tts', async (req, res) => {
 
   // Fallback: ElevenLabs (Daniel — British authoritative voice)
   if (process.env.ELEVENLABS_API_KEY) {
+    console.log('Trying ElevenLabs TTS...');
     const cached = getCached(cleanText, 'elevenlabs');
     if (cached) {
+      console.log('ElevenLabs: serving from cache');
       res.setHeader('Content-Type', 'audio/mpeg');
       return res.send(cached);
     }
@@ -287,14 +289,19 @@ app.post('/api/tts', async (req, res) => {
         }
       );
       if (response.ok) {
+        console.log('ElevenLabs: success');
         const buffer = Buffer.from(await response.arrayBuffer());
         saveCache(cleanText, 'elevenlabs', buffer);
         res.setHeader('Content-Type', 'audio/mpeg');
         return res.send(buffer);
       }
+      const errBody = await response.text();
+      console.warn(`ElevenLabs failed [${response.status}]:`, errBody);
     } catch (err) {
       console.warn('ElevenLabs error:', err.message);
     }
+  } else {
+    console.warn('ElevenLabs: no API key set — falling back to browser TTS');
   }
 
   res.status(404).json({ error: 'No TTS provider configured' });
