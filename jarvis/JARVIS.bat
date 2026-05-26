@@ -29,28 +29,17 @@ if not exist "%JARVIS_DIR%node_modules" (
     npm install
 )
 
-:: Kill any existing Jarvis on port 3000
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":3000 " 2^>nul') do (
+:: Kill any existing process on port 3000
+for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":3000 "') do (
     taskkill /F /PID %%a >nul 2>nul
 )
 
-echo  Starting J.A.R.V.I.S. server...
+echo  All systems online. Opening interface in 3 seconds...
+echo  Close this window to shut down J.A.R.V.I.S.
+echo.
+
+:: Open browser after a 3-second delay (in background), then run server in foreground
+start /MIN cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:3000"
+
 cd /d "%JARVIS_DIR%"
-start /B node server.js
-
-:: Wait for server to be ready
-echo  Waiting for systems to come online...
-:WAITLOOP
-timeout /t 1 /nobreak >nul
-curl -sf http://localhost:3000/api/status >nul 2>nul
-if %errorlevel% neq 0 goto WAITLOOP
-
-echo.
-echo  ✓  J.A.R.V.I.S. is online.
-echo  Opening interface...
-echo.
-start http://localhost:3000
-
-echo  Press Ctrl+C or close this window to shut down J.A.R.V.I.S.
-echo.
 node server.js
