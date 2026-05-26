@@ -4,6 +4,27 @@ const Anthropic = require('@anthropic-ai/sdk');
 const path = require('path');
 const { spawn } = require('child_process');
 const os = require('os');
+const crypto = require('crypto');
+const fs = require('fs');
+
+// ===== TTS Cache (saves Fish Audio / ElevenLabs credits) =====
+const CACHE_DIR = path.join(os.homedir(), '.jarvis-tts-cache');
+if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+
+function getCacheKey(text, provider) {
+  return crypto.createHash('md5').update(`${provider}:${text}`).digest('hex');
+}
+
+function getCached(text, provider) {
+  const file = path.join(CACHE_DIR, getCacheKey(text, provider));
+  if (fs.existsSync(file)) return fs.readFileSync(file);
+  return null;
+}
+
+function saveCache(text, provider, buffer) {
+  const file = path.join(CACHE_DIR, getCacheKey(text, provider));
+  fs.writeFileSync(file, buffer);
+}
 
 // ===== Piper TTS (local, free, JARVIS model) =====
 const PIPER_MODEL = process.env.PIPER_MODEL_PATH ||
@@ -192,8 +213,15 @@ app.post('/api/tts', async (req, res) => {
     }
   }
 
-  // Try Fish Audio (actual JARVIS MCU voice)
+  const cleanText = text.slice(0, 500);
+
+  // Try Fish Audio (JARVIS MCU voice)
   if (process.env.FISH_AUDIO_API_KEY) {
+    const cached = getCached(cleanText, 'fish');
+    if (cached) {
+      res.setHeader('Content-Type', 'audio/mpeg');
+      return res.send(cached);
+    }
     try {
       const response = await fetch('https://api.fish.audio/v1/tts', {
         method: 'POST',
@@ -203,23 +231,28 @@ app.post('/api/tts', async (req, res) => {
           'model': 's2-pro'
         },
         body: JSON.stringify({
-          text: text.slice(0, 500),
+          text: cleanText,
           reference_id: process.env.FISH_AUDIO_VOICE_ID || '612b878b113047d9a770c069c8b4fdfe',
           format: 'mp3',
           mp3_bitrate: 128,
           temperature: 0.7,
           top_p: 0.7,
-          latency: 'normal'
+          latency: 'normal',
+          prosody: { speed: 0.95 }
         })
       });
 
       if (response.ok) {
+        const buffer = Buffer.from(await response.arrayBuffer());
+        saveCache(cleanText, 'fish', buffer);
         res.setHeader('Content-Type', 'audio/mpeg');
-        const buffer = await response.arrayBuffer();
-        return res.send(Buffer.from(buffer));
+        return res.send(buffer);
       }
       const errText = await response.text();
       console.warn(`Fish Audio failed [${response.status}]:`, errText);
+      if (response.status === 402) {
+        console.warn('Fish Audio: insufficient credits. Top up at https://fish.audio');
+      }
     } catch (err) {
       console.warn('Fish Audio error:', err.message);
     }
@@ -227,6 +260,11 @@ app.post('/api/tts', async (req, res) => {
 
   // Fallback: ElevenLabs (Daniel — British authoritative voice)
   if (process.env.ELEVENLABS_API_KEY) {
+    const cached = getCached(cleanText, 'elevenlabs');
+    if (cached) {
+      res.setHeader('Content-Type', 'audio/mpeg');
+      return res.send(cached);
+    }
     try {
       const voiceId = process.env.ELEVENLABS_VOICE_ID || 'onwK4e9ZLuTAKqWW03F9';
       const response = await fetch(
@@ -239,16 +277,17 @@ app.post('/api/tts', async (req, res) => {
             'Accept': 'audio/mpeg'
           },
           body: JSON.stringify({
-            text: text.slice(0, 500),
+            text: cleanText,
             model_id: 'eleven_flash_v2_5',
             voice_settings: { stability: 0.75, similarity_boost: 0.85, style: 0.2 }
           })
         }
       );
       if (response.ok) {
+        const buffer = Buffer.from(await response.arrayBuffer());
+        saveCache(cleanText, 'elevenlabs', buffer);
         res.setHeader('Content-Type', 'audio/mpeg');
-        const buffer = await response.arrayBuffer();
-        return res.send(Buffer.from(buffer));
+        return res.send(buffer);
       }
     } catch (err) {
       console.warn('ElevenLabs error:', err.message);
